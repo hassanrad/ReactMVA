@@ -7,6 +7,9 @@ var Route = ReactRouter.Route;
 var Router = ReactRouter.Router;
 var Link = ReactRouter.Link;
 
+var PureRenderMixIn = require('react-addons-pure-render-mixin');
+
+
 var samples = require('./sample-data');
 
 var App = React.createClass({
@@ -19,6 +22,12 @@ var App = React.createClass({
   loadSampleData: function(){
     this.setState(samples);
   },
+  // User navigates to a /conversation/
+  componentWillMount: function(){
+    if('human' in this.props.params){
+      this.loadSampleData();
+    }
+  },
   render: function() {
     return (
       <div>
@@ -29,6 +38,7 @@ var App = React.createClass({
             <InboxPane humans={this.state.humans} />
           </div>
           <div className="column">
+            {this.props.children || "Select a Conversation from the Inbox"}
           </div>
           <div className="column">
             <StorePane stores={this.state.stores} />
@@ -65,6 +75,7 @@ var InboxPane = React.createClass({
 });
 
 var InboxItem = React.createClass({
+  mixins: [PureRenderMixIn],
   sortByDate: function(a, b) {
     return a.time>b.time ? -1 : a.time<b.time ? 1 : 0;
   },
@@ -84,6 +95,17 @@ var InboxItem = React.createClass({
 });
 
 var ConversationPane = React.createClass({
+  loadConversationData: function(){
+    this.setState({conversation: samples.human[human].conversations});
+  },
+  // Handle when User navigates / to /conversation/:human
+  componentWillMount: function(){
+    this.loadConversationData(this.props.params.human);
+  },
+  // Handle when User navigates /conversation/Rami to /conversation/Jeremy
+  componentWillReceiveProps: function(nextProps) {
+    this.loadConversationData(nextProps.params.human);
+  },
   renderMessage: function(val){
     return <Message who={val.who} text={val.text} key={val.time.getTime()} />;
   },
@@ -94,12 +116,14 @@ var ConversationPane = React.createClass({
         <h3>{this.props.params.human}</h3>
         <div id="messages">
         </div>
+          {this.state.conversation.map(this.renderMessage)}
       </div>
     )
   }
 });
 
 var Message = React.createClass({
+  mixins: [PureRenderMixIn],
   render: function() {
     return (
       <p>{this.props.who} said: "{this.props.text}"</p>
@@ -124,6 +148,7 @@ var StorePane = React.createClass({
 });
 
 var Store = React.createClass({
+  mixins: [PureRenderMixIn],
   getCount: function(status){
     return this.props.details.orders.filter(function(n){ return n.status === status}).length;
   },
@@ -139,8 +164,9 @@ var Store = React.createClass({
   }
 });
 
-ReactDOM.render(<Router history={browserHistory}>
-  <Route path='/' component={App}>
-    <Route path='/conversation/:human' component={ConversationPane}></Route>
-  </Route>
-</Router>, document.getElementById('main'));
+ReactDOM.render(
+  <Router history={browserHistory}>
+    <Route path="/" component={App}>
+      <Route path="/conversation/:human" component={ConversationPane}></Route>
+    </Route>
+  </Router>, document.getElementById("main"));
